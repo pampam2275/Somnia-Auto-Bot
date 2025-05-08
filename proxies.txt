@@ -1,0 +1,2 @@
+# Add proxies here, one per line
+# Example: http://host:port or socks5://user:pass@host:port
