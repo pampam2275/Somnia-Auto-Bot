@@ -40,10 +40,9 @@ const asciiBannerLines = [
 
 function animateBanner(bannerBox, screen, callback) {
   let idx = 0;
-  const total = asciiBannerLines.length;
   const lines = [];
   function showNextLine() {
-    if (idx < total) {
+    if (idx < asciiBannerLines.length) {
       lines.push(asciiBannerLines[idx]);
       bannerBox.setContent(gradient.pastel.multiline(lines.join('\n')));
       screen.render();
@@ -55,6 +54,7 @@ function animateBanner(bannerBox, screen, callback) {
   }
   showNextLine();
 }
+
 function pulseBanner(bannerBox, screen) {
   let bright = true;
   setInterval(() => {
@@ -69,7 +69,6 @@ function pulseBanner(bannerBox, screen) {
   }, 1500);
 }
 
-// ---- INPUT MODAL ----
 function requestInput(screen, promptText, type = 'text', defaultValue = '') {
   return new Promise((resolve) => {
     const promptBox = blessed.prompt({
@@ -93,7 +92,7 @@ function requestInput(screen, promptText, type = 'text', defaultValue = '') {
     });
 
     promptBox.input(
-      promptText + (defaultValue !== undefined && defaultValue !== '' ? ` [${defaultValue}]` : ''),
+      promptText + (defaultValue ? ` [${defaultValue}]` : ''),
       '',
       (err, value) => {
         if (type === 'number') value = Number(value);
@@ -107,14 +106,12 @@ function requestInput(screen, promptText, type = 'text', defaultValue = '') {
   });
 }
 
-// ---- MAIN ----
 function main() {
   const screen = blessed.screen({
     smartCSR: true,
     title: 'Somnia Testnet Pro UI'
   });
 
-  // Banner box
   const bannerBox = blessed.box({
     top: 0,
     left: 'center',
@@ -126,13 +123,12 @@ function main() {
     style: { fg: 'white', bg: 'black' }
   });
 
-  // Menu
   const menuBox = blessed.list({
     top: asciiBannerLines.length,
     left: 0,
     width: 22,
     height: '70%',
-    label: chalk.bold.hex('#00eaff')(' MENU '),
+    label: '{bold}{cyan-fg} MENU {/}',
     tags: true,
     keys: true,
     mouse: true,
@@ -154,13 +150,12 @@ function main() {
     }
   });
 
-  // Main panel (shows logs)
   const panelBox = blessed.log({
     top: asciiBannerLines.length,
     left: 23,
     width: '78%-1',
     height: '70%',
-    label: chalk.bold.hex('#ff8c00')(' SCRIPT PANEL (LOGS) '),
+    label: '{bold}{orange-fg} SCRIPT PANEL (LOGS) {/}',
     tags: true,
     border: { type: 'line', fg: '#ff8c00' },
     style: {
@@ -179,13 +174,12 @@ function main() {
     content: chalk.cyanBright('\nSelect a script from the menu...')
   });
 
-  // Logs panel (shows script panel content)
   const logBox = blessed.box({
     top: '70%',
     left: 0,
     width: '100%',
     height: 'shrink',
-    label: chalk.bold.hex('#ff00cc')(' PANEL '),
+    label: '{bold}{magenta-fg} PANEL {/}',
     border: { type: 'line', fg: '#ff00cc' },
     tags: true,
     scrollable: true,
@@ -199,7 +193,6 @@ function main() {
     content: chalk.cyanBright('\nSelect a script from the menu...')
   });
 
-  // Status bar
   const statusBar = blessed.box({
     bottom: 0,
     left: 0,
@@ -208,14 +201,9 @@ function main() {
     align: 'center',
     tags: true,
     style: { fg: 'black', bg: '#00eaff' },
-    content: chalk.blackBright.bold(
-      ' Contact: ') + chalk.black('https://t.me/Kazuha787') +
-      chalk.blackBright.bold('   Channel: ') + chalk.black('https://t.me/im_Kazuha787') +
-      chalk.blackBright.bold('   Replit: ') + chalk.black('KAZUHA787') +
-      chalk.blackBright('   |   ') + chalk.black('Press ') + chalk.bold('q') + chalk.black(' to quit')
+    content: ' Contact: https://t.me/Kazuha787   Channel: https://t.me/im_Kazuha787   Replit: KAZUHA787   |   Press q to quit'
   });
 
-  // Add elements to screen
   screen.append(bannerBox);
   screen.append(menuBox);
   screen.append(panelBox);
@@ -224,20 +212,18 @@ function main() {
 
   menuBox.focus();
 
-  // Animate banner and pulse
   animateBanner(bannerBox, screen, () => {
     pulseBanner(bannerBox, screen);
     screen.render();
   });
 
-  // Exit keys
   function closeUI() {
     screen.destroy();
     process.exit(0);
   }
+
   screen.key(['q', 'C-c', 'ESC'], closeUI);
 
-  // Menu navigation
   menuBox.on('select', async (item, idx) => {
     const selected = menuOptions[idx];
     if (!selected) return;
@@ -247,82 +233,45 @@ function main() {
       return;
     }
 
-    // Map menu value to script file
-    const scriptMap = {
-      'faucetstt': 'faucetstt',
-      'mintpong': 'mintpong',
-      'mintping': 'mintping',
-      'mintsusdt': 'mintsusdt',
-      'sendtx': 'sendtx',
-      'deploytoken': 'deploytoken',
-      'sendtoken': 'sendtoken',
-      'swappong': 'swappong',
-      'swapping': 'swapping',
-      'sellmeme': 'sellmeme',
-      'nftcollection': 'nftcollection',
-      'buymeme': 'buymeme',
-      'conftnft': 'conftnft',
-      'fun': 'fun',
-      'lovesomini': 'lovesomini',
-      'mintair': 'mintair',
-      'mintaura': 'mintaura',
-      'mintnerzo': 'mintnerzo'
-    };
-
-    if (scriptMap[selected.value]) {
-      try {
-        const scriptPath = path.join(__dirname, 'scripts', scriptMap[selected.value] + '.js');
-        if (!fs.existsSync(scriptPath)) {
-          logBox.setContent(chalk.red(`\n✖ Error: Script file not found at ${scriptPath}`));
-          panelBox.log(chalk.red(`✖ Error: Script file not found at ${scriptPath}`));
-          screen.render();
-          menuBox.focus();
-          return;
-        }
-        const scriptFunc = require(scriptPath);
-        await scriptFunc(
-          log => { panelBox.log(log); screen.render(); },      // addLog
-          content => { logBox.setContent(content); screen.render(); }, // updatePanel
-          closeUI,
-          async (promptText, type, defaultValue) => {
-            return await requestInput(screen, promptText, type, defaultValue);
-          }
-        );
-        logBox.setContent(chalk.cyanBright('\nSelect a script from the menu...'));
-        screen.render();
-        menuBox.focus();
-      } catch (e) {
-        logBox.setContent(chalk.red('\n✖ Error running script: ' + e.message));
-        panelBox.log(chalk.red('✖ Error running script: ' + e.message));
-        screen.render();
-        menuBox.focus();
-      }
+    const scriptPath = path.join(__dirname, 'scripts', selected.value + '.js');
+    if (!fs.existsSync(scriptPath)) {
+      logBox.setContent(chalk.red(`\n✖ Error: Script file not found at ${scriptPath}`));
+      panelBox.log(chalk.red(`✖ Error: Script file not found at ${scriptPath}`));
+      screen.render();
+      menuBox.focus();
       return;
     }
 
-    // Not implemented
-    logBox.setContent(
-      chalk.yellowBright(`\n${selected.label}\n\n`) +
-      chalk.gray('Not implemented yet.')
-    );
+    try {
+      const scriptFunc = require(scriptPath);
+      await scriptFunc(
+        log => { panelBox.log(log); screen.render(); },
+        content => { logBox.setContent(content); screen.render(); },
+        closeUI,
+        async (promptText, type, defaultValue) => {
+          return await requestInput(screen, promptText, type, defaultValue);
+        }
+      );
+    } catch (e) {
+      logBox.setContent(chalk.red('\n✖ Error running script: ' + e.message));
+      panelBox.log(chalk.red('✖ Error running script: ' + e.message));
+    }
+
+    logBox.setContent(chalk.cyanBright('\nSelect a script from the menu...'));
     screen.render();
     menuBox.focus();
   });
 
-  // On highlight, show info in panel
   menuBox.on('highlight item', (item, idx) => {
-    if (!item) return;
     const selected = menuOptions[idx];
-    if (!selected) return;
-    logBox.setContent(chalk.yellowBright(`\n${selected.label}\n\n`) +
-      chalk.gray('Press Enter to run this script.'));
-    screen.render();
+    if (selected) {
+      logBox.setContent(chalk.yellowBright(`\n${selected.label}\n\n`) + chalk.gray('Press Enter to run this script.'));
+      screen.render();
+    }
   });
 
-  // Initial highlight
   menuBox.select(0);
   menuBox.emit('highlight item', menuBox.items[0], 0);
-
   screen.render();
 }
 
